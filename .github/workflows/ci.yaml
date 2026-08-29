@@ -1,14 +1,18 @@
-name: CloudCostOps CI
+name: CloudCostOps CI/CD
 
 on:
   push:
     branches:
       - main
       - master
+
   pull_request:
     branches:
       - main
       - master
+
+permissions:
+  contents: read
 
 jobs:
   backend-test:
@@ -24,16 +28,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Install backend dependencies
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run tests
+      - name: Run backend tests
         working-directory: backend
         run: |
-          pytest
+          pytest -v
 
   frontend-build:
     name: Frontend Build
@@ -50,7 +54,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
         working-directory: frontend
         run: |
           npm ci
@@ -60,25 +64,64 @@ jobs:
         run: |
           npm run build
 
-  docker-build:
-    name: Docker Build
+  docker-build-and-push:
+    name: Build and Push Docker Images
     runs-on: ubuntu-latest
+
     needs:
       - backend-test
       - frontend-build
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      AWS_REGION: us-east-1
+      BACKEND_REPOSITORY: cloudcostops-backend
+      FRONTEND_REPOSITORY: cloudcostops-frontend
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: arn:aws:iam::483176634994:role/GitHubActionsCloudCostOpsRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: |
+          aws sts get-caller-identity
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: image
+        run: |
+          echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
       - name: Build backend Docker image
         run: |
           docker build \
-            -t cloudcostops-backend:${{ github.sha }} \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_REPOSITORY }}:${{ steps.image.outputs.tag }} \
             ./backend
 
       - name: Build frontend Docker image
         run: |
           docker build \
-            -t cloudcostops-frontend:${{ github.sha }} \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_REPOSITORY }}:${{ steps.image.outputs.tag }} \
             ./frontend
+
+      - name: Push backend Docker image
+        run: |
+          docker push \
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_REPOSITORY }}:${{ steps.image.outputs.tag }}
+
+      - name: Push frontend Docker image
+        run: |
+          docker push \
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_REPOSITORY }}:${{ steps.image.outputs.tag }}
