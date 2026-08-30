@@ -10,7 +10,7 @@ export default defineConfig({
 
     proxy: {
       "/api": {
-        target: "http://backend:8000",
+        target: "http://cloudcostops-backend:8000",
         changeOrigin: true
       }
     }
