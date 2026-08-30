@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudcostops-frontend
+  namespace: cloudcostops
+  labels:
+    app: cloudcostops-frontend
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: cloudcostops-frontend
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
+  template:
+    metadata:
+      labels:
+        app: cloudcostops-frontend
+
+    spec:
+      containers:
+        - name: frontend
+          image: 483176634994.dkr.ecr.us-east-1.amazonaws.com/cloudcostops-frontend:66fa7f5dc3974e3650cb7da291a43895056742b6
+
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+
+            limits:
+              cpu: 300m
+              memory: 256Mi
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20

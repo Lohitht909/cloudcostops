@@ -1,0 +1,59 @@
+namespace: cloudcostops
+
+backend:
+  replicaCount: 1
+
+  image:
+    repository: 483176634994.dkr.ecr.us-east-1.amazonaws.com/cloudcostops-backend
+    tag: "70f1e39b83f6b0b3becb0ee276c4d094b99672c1"
+
+  service:
+    port: 8000
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+frontend:
+  replicaCount: 1
+
+  image:
+    repository: 483176634994.dkr.ecr.us-east-1.amazonaws.com/cloudcostops-frontend
+    tag: "66fa7f5dc3974e3650cb7da291a43895056742b6"
+
+  service:
+    port: 3000
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+postgres:
+  image: postgres:16
+
+  database: cloudcostops
+  username: cloudcostops
+  password: cloudcostops-dev-password
+
+  service:
+    port: 5432
+
+  storage:
+    size: 10Gi
+    storageClass: gp2
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

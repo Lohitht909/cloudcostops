@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudcostops-backend
+  namespace: cloudcostops
+  labels:
+    app: cloudcostops-backend
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: cloudcostops-backend
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
+  template:
+    metadata:
+      labels:
+        app: cloudcostops-backend
+
+    spec:
+      containers:
+        - name: backend
+
+          image: 483176634994.dkr.ecr.us-east-1.amazonaws.com/cloudcostops-backend:70f1e39b83f6b0b3becb0ee276c4d094b99672c1
+
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: cloudcostops-backend-secret
+                  key: DATABASE_URL
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            failureThreshold: 30
+            periodSeconds: 5
+
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
