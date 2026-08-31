@@ -151,6 +151,7 @@ resource "aws_route_table_association" "private_2" {
 resource "aws_ecr_repository" "backend" {
   name                 = "cloudcostops-backend"
   image_tag_mutability = "IMMUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
@@ -167,6 +168,7 @@ resource "aws_ecr_repository" "backend" {
 resource "aws_ecr_repository" "frontend" {
   name                 = "cloudcostops-frontend"
   image_tag_mutability = "IMMUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true

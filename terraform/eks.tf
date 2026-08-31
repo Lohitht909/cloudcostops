@@ -127,3 +127,31 @@ resource "aws_eks_addon" "ebs_csi" {
     aws_iam_role_policy_attachment.ebs_csi
   ]
 }
+
+
+resource "aws_eks_access_entry" "admin" {
+  cluster_name  = aws_eks_cluster.cloudcostops.name
+  principal_arn = "arn:aws:iam::483176634994:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_3942924358180bb6"
+  type          = "STANDARD"
+}
+
+resource "aws_eks_access_policy_association" "admin" {
+  cluster_name  = aws_eks_cluster.cloudcostops.name
+  principal_arn = aws_eks_access_entry.admin.principal_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+}
+
+resource "aws_eks_pod_identity_association" "aws_load_balancer_controller" {
+  cluster_name    = aws_eks_cluster.cloudcostops.name
+  namespace       = "kube-system"
+  service_account = "aws-load-balancer-controller"
+  role_arn        = aws_iam_role.aws_load_balancer_controller.arn
+
+  depends_on = [
+    aws_eks_addon.pod_identity_agent
+  ]
+}
