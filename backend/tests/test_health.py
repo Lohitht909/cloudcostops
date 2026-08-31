@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import pytest
 
 from app.main import app
 
@@ -33,7 +34,7 @@ def test_dashboard():
 
 
 def test_costs():
-    mock_costs = [
+    mock_daily_costs = [
         {
             "date": "2026-08-30",
             "amount": 12.34,
@@ -48,9 +49,25 @@ def test_costs():
         },
     ]
 
+    mock_service_costs = [
+        {
+            "name": "Amazon Elastic Compute Cloud",
+            "amount": 20.00,
+            "currency": "USD",
+        },
+        {
+            "name": "Amazon Elastic Kubernetes Service",
+            "amount": 8.01,
+            "currency": "USD",
+        },
+    ]
+
     with patch(
         "app.routes.dashboard.get_daily_costs",
-        return_value=mock_costs,
+        return_value=mock_daily_costs,
+    ), patch(
+        "app.routes.dashboard.get_service_costs",
+        return_value=mock_service_costs,
     ):
         response = client.get("/api/costs")
 
@@ -60,7 +77,11 @@ def test_costs():
 
     assert data["currency"] == "USD"
     assert data["days"] == 7
-    assert data["data"] == mock_costs
+
+    assert data["total"] == pytest.approx(28.01)
+
+    assert data["daily"] == mock_daily_costs
+    assert data["services"] == mock_service_costs
 
 def test_resources():
     response = client.get("/api/resources")
