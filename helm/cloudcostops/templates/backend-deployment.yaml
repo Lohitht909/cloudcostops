@@ -27,6 +27,7 @@ spec:
         app: {{ .Release.Name }}-backend
 
     spec:
+      serviceAccountName: cloudcostops-backend
       containers:
         - name: backend
 

@@ -155,3 +155,14 @@ resource "aws_eks_pod_identity_association" "aws_load_balancer_controller" {
     aws_eks_addon.pod_identity_agent
   ]
 }
+
+resource "aws_eks_pod_identity_association" "cloudcostops_backend" {
+  cluster_name    = aws_eks_cluster.cloudcostops.name
+  namespace       = "cloudcostops"
+  service_account = "cloudcostops-backend"
+  role_arn        = aws_iam_role.cloudcostops_backend.arn
+
+  depends_on = [
+    aws_eks_addon.pod_identity_agent
+  ]
+}

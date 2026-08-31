@@ -519,3 +519,54 @@ resource "aws_iam_role_policy" "aws_load_balancer_controller" {
     ]
   })
 }
+
+resource "aws_iam_role" "cloudcostops_backend" {
+  name = "CloudCostOpsBackendRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Principal = {
+          Service = "pods.eks.amazonaws.com"
+        }
+
+        Action = [
+          "sts:AssumeRole",
+          "sts:TagSession"
+        ]
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "CloudCostOpsBackendRole"
+    Project     = "CloudCostOps"
+    Environment = "dev"
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_iam_role_policy" "cloudcostops_backend_cost_explorer" {
+  name = "CloudCostOpsCostExplorerPolicy"
+  role = aws_iam_role.cloudcostops_backend.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Action = [
+          "ce:GetCostAndUsage"
+        ]
+
+        Resource = "*"
+      }
+    ]
+  })
+}

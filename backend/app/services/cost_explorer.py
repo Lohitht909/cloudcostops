@@ -23,9 +23,8 @@ def get_daily_costs(days: int = 7):
     results = []
 
     for item in response["ResultsByTime"]:
-        amount = round(
-            float(item["Total"]["UnblendedCost"]["Amount"]),
-            2,
+        amount = float(
+            item["Total"]["UnblendedCost"]["Amount"]
         )
 
         results.append(
@@ -85,18 +84,7 @@ def get_service_costs(days: int = 7):
 
             services[service_name]["amount"] += amount
 
-    result = []
-
-    for service in services.values():
-        service["amount"] = round(
-            service["amount"],
-            2,
-        )
-
-        if service["amount"] == 0:
-            service["amount"] = 0.0
-
-        result.append(service)
+    result = list(services.values())
 
     result.sort(
         key=lambda service: service["amount"],

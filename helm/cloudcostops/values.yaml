@@ -5,7 +5,7 @@ backend:
 
   image:
     repository: 483176634994.dkr.ecr.us-east-1.amazonaws.com/cloudcostops-backend
-    tag: "794cdc53fee304ff063e9a5256a6e6c57d61d11b"
+    tag: "6ded1fb2a7fb874fe84441e7641003435df939da"
 
   service:
     port: 8000
@@ -23,7 +23,7 @@ frontend:
 
   image:
     repository: 483176634994.dkr.ecr.us-east-1.amazonaws.com/cloudcostops-frontend
-    tag: "794cdc53fee304ff063e9a5256a6e6c57d61d11b"
+    tag: "6ded1fb2a7fb874fe84441e7641003435df939da"
 
   service:
     port: 3000
