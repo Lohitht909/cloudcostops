@@ -2,17 +2,35 @@ import { useEffect, useState } from "react";
 
 function App() {
   const [dashboard, setDashboard] = useState(null);
+  const [costs, setCosts] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/dashboard")
-      .then((response) => {
-        if (!response.ok) {
+    Promise.all([
+      fetch("/api/dashboard"),
+      fetch("/api/costs"),
+    ])
+      .then(async ([dashboardResponse, costsResponse]) => {
+        if (!dashboardResponse.ok) {
           throw new Error("Failed to load dashboard");
         }
-        return response.json();
+
+        if (!costsResponse.ok) {
+          throw new Error("Failed to load AWS costs");
+        }
+
+        const dashboardData = await dashboardResponse.json();
+        const costsData = await costsResponse.json();
+
+        return {
+          dashboardData,
+          costsData,
+        };
       })
-      .then((data) => setDashboard(data))
+      .then(({ dashboardData, costsData }) => {
+        setDashboard(dashboardData);
+        setCosts(costsData);
+      })
       .catch((err) => setError(err.message));
   }, []);
 
@@ -25,7 +43,7 @@ function App() {
     );
   }
 
-  if (!dashboard) {
+  if (!dashboard || !costs) {
     return (
       <div className="container">
         <h1>CloudCostOps</h1>
@@ -45,42 +63,76 @@ function App() {
 
       <section className="cards">
         <div className="card">
-          <span>Monthly Cost</span>
-          <strong>${dashboard.monthly_cost.toFixed(2)}</strong>
+          <span>AWS Cost — Last 7 Days</span>
+          <strong>
+            ${costs.total.toFixed(2)}
+          </strong>
         </div>
 
         <div className="card">
           <span>Previous Month</span>
-          <strong>${dashboard.previous_month_cost.toFixed(2)}</strong>
+          <strong>
+            ${dashboard.previous_month_cost.toFixed(2)}
+          </strong>
         </div>
 
         <div className="card">
           <span>Potential Savings</span>
-          <strong>${dashboard.potential_savings.toFixed(2)}</strong>
+          <strong>
+            ${dashboard.potential_savings.toFixed(2)}
+          </strong>
         </div>
 
         <div className="card">
           <span>Unused Resources</span>
-          <strong>{dashboard.resources.unused}</strong>
+          <strong>
+            {dashboard.resources.unused}
+          </strong>
         </div>
       </section>
 
       <section className="panel">
-        <h2>AWS Cost by Service</h2>
+        <h2>AWS Cost by Service — Last 7 Days</h2>
 
         <table>
           <thead>
             <tr>
               <th>Service</th>
-              <th>Monthly Cost</th>
+              <th>Cost</th>
             </tr>
           </thead>
 
           <tbody>
-            {dashboard.services.map((service) => (
+            {costs.services.map((service) => (
               <tr key={service.name}>
                 <td>{service.name}</td>
-                <td>${service.cost.toFixed(2)}</td>
+                <td>
+                  ${service.amount.toFixed(2)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="panel">
+        <h2>Daily AWS Cost — Last 7 Days</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Cost</th>
+              <th>Estimated</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {costs.daily.map((day) => (
+              <tr key={day.date}>
+                <td>{day.date}</td>
+                <td>${day.amount.toFixed(2)}</td>
+                <td>{day.estimated ? "Yes" : "No"}</td>
               </tr>
             ))}
           </tbody>
