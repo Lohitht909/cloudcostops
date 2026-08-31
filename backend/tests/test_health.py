@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
+from unittest.mock import patch
 
 client = TestClient(app)
 
@@ -32,16 +33,34 @@ def test_dashboard():
 
 
 def test_costs():
-    response = client.get("/api/costs")
+    mock_costs = [
+        {
+            "date": "2026-08-30",
+            "amount": 12.34,
+            "currency": "USD",
+            "estimated": True,
+        },
+        {
+            "date": "2026-08-31",
+            "amount": 15.67,
+            "currency": "USD",
+            "estimated": True,
+        },
+    ]
+
+    with patch(
+        "app.routes.dashboard.get_daily_costs",
+        return_value=mock_costs,
+    ):
+        response = client.get("/api/costs")
 
     assert response.status_code == 200
 
     data = response.json()
 
-    assert len(data) > 0
-    assert all("name" in service for service in data)
-    assert all("cost" in service for service in data)
-
+    assert data["currency"] == "USD"
+    assert data["days"] == 7
+    assert data["data"] == mock_costs
 
 def test_resources():
     response = client.get("/api/resources")

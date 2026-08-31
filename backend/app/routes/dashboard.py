@@ -1,6 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+
+from app.services.cost_explorer import get_daily_costs
+
 
 router = APIRouter()
+
 
 dashboard_data = {
     "monthly_cost": 1247.50,
@@ -51,7 +55,18 @@ def get_dashboard():
 
 @router.get("/costs")
 def get_costs():
-    return dashboard_data["services"]
+    try:
+        return {
+            "currency": "USD",
+            "days": 7,
+            "data": get_daily_costs(7)
+        }
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unable to retrieve AWS cost data: {exc}"
+        )
 
 
 @router.get("/resources")
