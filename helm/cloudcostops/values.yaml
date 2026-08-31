@@ -5,7 +5,7 @@ backend:
 
   image:
     repository: 483176634994.dkr.ecr.us-east-1.amazonaws.com/cloudcostops-backend
-    tag: "70f1e39b83f6b0b3becb0ee276c4d094b99672c1"
+    tag: "bd580df4a63d0f6e599daa0a02af72af36feabed"
 
   service:
     port: 8000
@@ -23,7 +23,7 @@ frontend:
 
   image:
     repository: 483176634994.dkr.ecr.us-east-1.amazonaws.com/cloudcostops-frontend
-    tag: "66fa7f5dc3974e3650cb7da291a43895056742b6"
+    tag: "bd580df4a63d0f6e599daa0a02af72af36feabed"
 
   service:
     port: 3000
@@ -57,3 +57,9 @@ postgres:
     limits:
       cpu: 500m
       memory: 512Mi
+
+ingress:
+  enabled: true
+  className: alb
+  scheme: internet-facing
+  targetType: ip

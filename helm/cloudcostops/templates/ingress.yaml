@@ -1,0 +1,34 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: cloudcostops
+  namespace: {{ .Values.namespace }}
+
+  annotations:
+    alb.ingress.kubernetes.io/scheme: {{ .Values.ingress.scheme | quote }}
+    alb.ingress.kubernetes.io/target-type: {{ .Values.ingress.targetType | quote }}
+
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+
+  rules:
+    - http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: cloudcostops-backend
+                port:
+                  number: {{ .Values.backend.service.port }}
+
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cloudcostops-frontend
+                port:
+                  number: {{ .Values.frontend.service.port }}
+{{- end }}
