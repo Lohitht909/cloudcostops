@@ -5,7 +5,7 @@ backend:
 
   image:
     repository: 483176634994.dkr.ecr.us-east-1.amazonaws.com/cloudcostops-backend
-    tag: "bd580df4a63d0f6e599daa0a02af72af36feabed"
+    tag: "794cdc53fee304ff063e9a5256a6e6c57d61d11b"
 
   service:
     port: 8000
@@ -23,7 +23,7 @@ frontend:
 
   image:
     repository: 483176634994.dkr.ecr.us-east-1.amazonaws.com/cloudcostops-frontend
-    tag: "bd580df4a63d0f6e599daa0a02af72af36feabed"
+    tag: "794cdc53fee304ff063e9a5256a6e6c57d61d11b"
 
   service:
     port: 3000
@@ -63,3 +63,6 @@ ingress:
   className: alb
   scheme: internet-facing
   targetType: ip
+
+  certificateArn: "arn:aws:acm:us-east-1:483176634994:certificate/15ef4ae4-1432-4e3d-b615-3925cd686c2b"
+  sslRedirectPort: "443"

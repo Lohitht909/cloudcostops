@@ -9,7 +9,7 @@ export default defineConfig({
     port: 3000,
 
     allowedHosts: [
-      "k8s-cloudcos-cloudcos-e1bd232905-1211250675.us-east-1.elb.amazonaws.com"
+      "b17devops.xyz"
     ],
 
     proxy: {
