@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
+from app.services.aws_account import get_account_context
 from app.services.dashboard import build_dashboard
 from app.services.resource_inventory import list_resources, summarize_resources
 
@@ -33,6 +35,8 @@ def get_costs(
             "daily": dashboard["daily_costs"],
             "services": dashboard["services"],
             "data_source": dashboard["data_source"],
+            "previous_period": dashboard["previous_month_cost"],
+            "change_percent": dashboard["cost_change_percent"],
         }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to retrieve cost data: {exc}") from exc
@@ -60,3 +64,18 @@ def get_recommendations(db: Session = Depends(get_db)):
         return build_dashboard(db, 7)["recommendations"]
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to retrieve recommendations: {exc}") from exc
+
+
+@router.get("/aws/context")
+def get_aws_context():
+    if settings.data_source != "aws":
+        return {
+            "data_source": "demo",
+            "account_id": None,
+            "region": settings.aws_region,
+        }
+
+    try:
+        return {"data_source": "aws", **get_account_context()}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to identify AWS account: {exc}") from exc
