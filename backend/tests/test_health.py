@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -24,42 +24,24 @@ def test_dashboard():
         "currency": "USD",
         "days": 7,
         "total_cost": 28.01,
-        "daily_costs": [
-            {
-                "date": "2026-08-30",
-                "amount": 12.34,
-                "currency": "USD",
-                "estimated": True,
-            },
-            {
-                "date": "2026-08-31",
-                "amount": 15.67,
-                "currency": "USD",
-                "estimated": True,
-            },
-        ],
-        "services": [
-            {
-                "name": "Amazon Elastic Compute Cloud",
-                "amount": 20.00,
-                "currency": "USD",
-            },
-            {
-                "name": "Amazon Elastic Kubernetes Service",
-                "amount": 8.01,
-                "currency": "USD",
-            },
-        ],
+        "daily_costs": [],
+        "services": [],
+        "resources": {"total": 0, "unused": 0, "underutilized": 0},
+        "recommendations": [],
+        "potential_savings": 0.0,
+        "previous_month_cost": 28.01,
+        "data_source": "demo",
     }
 
     with patch(
         "app.routes.dashboard.build_dashboard",
         return_value=mock_dashboard,
-    ):
+    ) as build_dashboard:
         response = client.get("/api/dashboard")
 
     assert response.status_code == 200
     assert response.json() == mock_dashboard
+    build_dashboard.assert_called_once_with(ANY, 7)
 
 
 def test_dashboard_days_parameter():
@@ -69,6 +51,11 @@ def test_dashboard_days_parameter():
         "total_cost": 100.00,
         "daily_costs": [],
         "services": [],
+        "resources": {"total": 0, "unused": 0, "underutilized": 0},
+        "recommendations": [],
+        "potential_savings": 0.0,
+        "previous_month_cost": 100.00,
+        "data_source": "demo",
     }
 
     with patch(
@@ -79,7 +66,7 @@ def test_dashboard_days_parameter():
 
     assert response.status_code == 200
     assert response.json() == mock_dashboard
-    build_dashboard.assert_called_once_with(30)
+    build_dashboard.assert_called_once_with(ANY, 30)
 
 
 def test_dashboard_rejects_invalid_days():
@@ -95,32 +82,13 @@ def test_costs():
         "currency": "USD",
         "days": 7,
         "total_cost": 28.01,
-        "daily_costs": [
-            {
-                "date": "2026-08-30",
-                "amount": 12.34,
-                "currency": "USD",
-                "estimated": True,
-            },
-            {
-                "date": "2026-08-31",
-                "amount": 15.67,
-                "currency": "USD",
-                "estimated": True,
-            },
-        ],
-        "services": [
-            {
-                "name": "Amazon Elastic Compute Cloud",
-                "amount": 20.00,
-                "currency": "USD",
-            },
-            {
-                "name": "Amazon Elastic Kubernetes Service",
-                "amount": 8.01,
-                "currency": "USD",
-            },
-        ],
+        "daily_costs": [],
+        "services": [],
+        "resources": {"total": 0, "unused": 0, "underutilized": 0},
+        "recommendations": [],
+        "potential_savings": 0.0,
+        "previous_month_cost": 28.01,
+        "data_source": "demo",
     }
 
     with patch(
@@ -132,27 +100,42 @@ def test_costs():
     assert response.status_code == 200
 
     data = response.json()
-
     assert data["currency"] == "USD"
     assert data["days"] == 7
     assert data["total"] == pytest.approx(28.01)
-    assert data["daily"] == mock_dashboard["daily_costs"]
-    assert data["services"] == mock_dashboard["services"]
+    assert data["data_source"] == "demo"
 
 
 def test_resources():
-    response = client.get("/api/resources")
+    mock_dashboard = {
+        "resources": {"total": 4, "unused": 2, "underutilized": 1}
+    }
+
+    with patch(
+        "app.routes.dashboard.build_dashboard",
+        return_value=mock_dashboard,
+    ):
+        response = client.get("/api/resources")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "total": 0,
-        "unused": 0,
-        "underutilized": 0,
-    }
+    assert response.json() == mock_dashboard["resources"]
 
 
 def test_recommendations():
-    response = client.get("/api/recommendations")
+    recommendations = [
+        {
+            "resource": "EC2 i-012345",
+            "issue": "Low CPU utilization",
+            "recommendation": "Downsize instance",
+            "estimated_savings": 48.0,
+        }
+    ]
+
+    with patch(
+        "app.routes.dashboard.build_dashboard",
+        return_value={"recommendations": recommendations},
+    ):
+        response = client.get("/api/recommendations")
 
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json() == recommendations
