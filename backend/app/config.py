@@ -2,7 +2,7 @@ import os
 
 
 class Settings:
-    """Application configuration loaded from environment variables."""
+    """AWS-specific CloudCostOps application configuration."""
 
     def __init__(self):
         self.database_url = os.getenv(
@@ -11,6 +11,9 @@ class Settings:
         )
         self.aws_region = os.getenv("AWS_REGION", "us-east-1")
         self.data_source = os.getenv("CLOUDCOSTOPS_DATA_SOURCE", "demo").lower()
+
+        if self.data_source not in {"demo", "aws"}:
+            raise ValueError("CLOUDCOSTOPS_DATA_SOURCE must be 'demo' or 'aws'")
 
 
 settings = Settings()
