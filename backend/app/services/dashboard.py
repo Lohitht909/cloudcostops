@@ -1,35 +1,95 @@
+from calendar import monthrange
+from datetime import date, timedelta
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.models import Cost, Recommendation, Resource
 from app.services.cost_explorer import get_daily_costs, get_service_costs
-from app.services.demo_dashboard import build_demo_dashboard
 from app.services.recommendation_engine import generate_recommendations
 from app.services.resource_inventory import list_resources, summarize_resources
 
 
+def _demo_daily_costs(db: Session, days: int):
+    costs = db.query(Cost).order_by(Cost.id).all()
+    total = round(sum(item.cost for item in costs), 2)
+    if days <= 0:
+        return []
+
+    daily_amount = round(total / days, 2)
+    result = []
+    running = 0.0
+    for offset in range(days):
+        amount = daily_amount
+        if offset == days - 1:
+            amount = round(total - running, 2)
+        running += amount
+        result.append(
+            {
+                "date": (date.today() - timedelta(days=days - 1 - offset)).isoformat(),
+                "amount": amount,
+                "currency": "USD",
+                "estimated": True,
+            }
+        )
+    return result
+
+
+def _previous_month_demo_cost(db: Session):
+    return round(float(db.query(func.sum(Cost.cost)).scalar() or 0.0), 2)
+
+
 def build_dashboard(db: Session, days: int = 7):
+    resources = list_resources(db)
+
     if settings.data_source == "aws":
         daily = get_daily_costs(days)
         services = get_service_costs(days)
-        resources = list_resources(db)
         recommendations = generate_recommendations(resources)
-
         total_cost = round(sum(item["amount"] for item in daily), 2)
-        potential_savings = round(
-            sum(item["estimated_savings"] for item in recommendations), 2
+        previous_month_cost = None
+        data_source = "aws"
+    else:
+        daily = _demo_daily_costs(db, days)
+        costs = db.query(Cost).order_by(Cost.id).all()
+        services = [
+            {"name": item.service, "amount": round(item.cost, 2), "currency": "USD"}
+            for item in costs
+        ]
+        services.sort(key=lambda item: item["amount"], reverse=True)
+        demo_recommendations = (
+            db.query(Recommendation)
+            .order_by(Recommendation.estimated_savings.desc())
+            .all()
         )
+        recommendations = [
+            {
+                "resource": item.resource,
+                "issue": item.issue,
+                "recommendation": item.recommendation,
+                "estimated_savings": round(item.estimated_savings, 2),
+            }
+            for item in demo_recommendations
+        ]
+        total_cost = round(sum(item["amount"] for item in daily), 2)
+        previous_month_cost = _previous_month_demo_cost(db)
+        data_source = "demo"
 
-        return {
-            "currency": daily[0]["currency"] if daily else "USD",
-            "days": days,
-            "total_cost": total_cost,
-            "previous_month_cost": None,
-            "potential_savings": potential_savings,
-            "daily_costs": daily,
-            "services": services,
-            "resources": summarize_resources(resources),
-            "recommendations": recommendations,
-            "data_source": "aws",
-        }
+    resource_summary = summarize_resources(resources)
+    potential_savings = round(
+        sum(item["estimated_savings"] for item in recommendations), 2
+    )
 
-    return build_demo_dashboard(db, days)
+    return {
+        "currency": daily[0]["currency"] if daily else "USD",
+        "days": days,
+        "total_cost": total_cost,
+        "previous_month_cost": previous_month_cost,
+        "potential_savings": potential_savings,
+        "daily_costs": daily,
+        "services": services,
+        "resources": resource_summary,
+        "recommendations": recommendations,
+        "data_source": data_source,
+    }
