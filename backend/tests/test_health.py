@@ -86,6 +86,7 @@ def test_costs():
         "recommendations": [],
         "potential_savings": 0.0,
         "previous_month_cost": 28.01,
+        "cost_change_percent": None,
         "data_source": "demo",
     }
 
