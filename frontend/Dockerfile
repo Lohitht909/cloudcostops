@@ -14,6 +14,7 @@ COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 
 ENV BACKEND_HOST=backend:8000
+ENV NGINX_ENVSUBST_VARIABLES='$BACKEND_HOST'
 
 EXPOSE 3000
 
