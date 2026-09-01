@@ -107,18 +107,35 @@ def test_costs():
 
 
 def test_resources():
-    mock_dashboard = {
-        "resources": {"total": 4, "unused": 2, "underutilized": 1}
-    }
+    resources = [
+        {"id": "i-demo", "type": "EC2", "status": "underutilized", "source": "demo"},
+        {"id": "vol-demo", "type": "EBS", "status": "unused", "source": "demo"},
+    ]
 
-    with patch(
-        "app.routes.dashboard.build_dashboard",
-        return_value=mock_dashboard,
-    ):
+    with patch("app.routes.dashboard.list_resources", return_value=resources):
         response = client.get("/api/resources")
 
     assert response.status_code == 200
-    assert response.json() == mock_dashboard["resources"]
+    assert response.json() == resources
+
+
+def test_resource_summary():
+    resources = [
+        {"id": "i-demo", "type": "EC2", "status": "underutilized", "source": "demo"},
+        {"id": "vol-demo", "type": "EBS", "status": "unused", "source": "demo"},
+        {"id": "rds-demo", "type": "RDS", "status": "active", "source": "demo"},
+    ]
+
+    with patch("app.routes.dashboard.list_resources", return_value=resources):
+        response = client.get("/api/resources/summary")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "total": 3,
+        "unused": 1,
+        "underutilized": 1,
+        "by_type": {"EC2": 1, "EBS": 1, "RDS": 1},
+    }
 
 
 def test_recommendations():
