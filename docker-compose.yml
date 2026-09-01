@@ -21,13 +21,16 @@ services:
       timeout: 5s
       retries: 5
 
-
   backend:
     build: ./backend
     container_name: cloudcostops-backend
 
     environment:
       DATABASE_URL: postgresql://cloudcostops:cloudcostops@postgres:5432/cloudcostops
+      AWS_REGION: us-east-1
+      CLOUDCOSTOPS_DATA_SOURCE: demo
+
+    command: ["sh", "-c", "python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
 
     ports:
       - "8000:8000"
@@ -36,17 +39,18 @@ services:
       postgres:
         condition: service_healthy
 
-
   frontend:
     build: ./frontend
     container_name: cloudcostops-frontend
+
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
 
     ports:
       - "3000:3000"
 
     depends_on:
       - backend
-
 
 volumes:
   postgres_data:
