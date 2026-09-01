@@ -1,52 +1,44 @@
 services:
-
   postgres:
     image: postgres:16
     container_name: cloudcostops-postgres
-
     environment:
       POSTGRES_USER: cloudcostops
       POSTGRES_PASSWORD: cloudcostops
       POSTGRES_DB: cloudcostops
-
     ports:
       - "5432:5432"
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cloudcostops -d cloudcostops"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-
   backend:
     build: ./backend
     container_name: cloudcostops-backend
-
     environment:
       DATABASE_URL: postgresql://cloudcostops:cloudcostops@postgres:5432/cloudcostops
-
+      AWS_REGION: us-east-1
+      CLOUDCOSTOPS_DATA_SOURCE: demo
+    command: ["sh", "-c", "python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     ports:
       - "8000:8000"
-
     depends_on:
       postgres:
         condition: service_healthy
 
-
   frontend:
     build: ./frontend
     container_name: cloudcostops-frontend
-
+    environment:
+      BACKEND_HOST: backend:8000
     ports:
       - "3000:3000"
-
     depends_on:
       - backend
-
 
 volumes:
   postgres_data:

@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 function formatCurrency(amount, currency = "USD") {
   const value = Number(amount) || 0;
-
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
@@ -11,621 +10,131 @@ function formatCurrency(amount, currency = "USD") {
   }).format(value);
 }
 
-function formatDate(dateString) {
-  return new Date(`${dateString}T00:00:00`).toLocaleDateString("en-US", {
+function formatDate(value) {
+  return new Date(`${value}T00:00:00`).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });
 }
 
+function StatusBadge({ priority }) {
+  return <span className={`priority ${priority || "medium"}`}>{priority || "medium"}</span>;
+}
+
 function CostChart({ daily, currency }) {
-  if (!daily || daily.length === 0) {
-    return <div className="empty-state">No daily cost data available.</div>;
-  }
-
+  if (!daily?.length) return <div className="empty-state">No cost data available.</div>;
   const values = daily.map((item) => Number(item.amount) || 0);
-
-  const maxValue = Math.max(...values.map(Math.abs), 0.01);
-
+  const max = Math.max(...values, 0.01);
   const width = 900;
-  const height = 280;
-  const paddingX = 45;
-  const paddingTop = 25;
-  const paddingBottom = 45;
-
-  const chartWidth = width - paddingX * 2;
-  const chartHeight = height - paddingTop - paddingBottom;
-
+  const height = 260;
+  const px = 42;
+  const py = 25;
+  const chartWidth = width - px * 2;
+  const chartHeight = height - 65;
   const points = daily.map((item, index) => {
-    const x =
-      paddingX +
-      (index / Math.max(daily.length - 1, 1)) * chartWidth;
-
-    const normalized = Math.abs(Number(item.amount) || 0) / maxValue;
-
-    const y =
-      paddingTop +
-      chartHeight -
-      normalized * chartHeight;
-
-    return {
-      x,
-      y,
-      item,
-    };
+    const x = px + (index / Math.max(daily.length - 1, 1)) * chartWidth;
+    const y = py + chartHeight - (Number(item.amount) / max) * chartHeight;
+    return { x, y, item };
   });
-
-  const linePoints = points
-    .map((point) => `${point.x},${point.y}`)
-    .join(" ");
-
-  const areaPoints = [
-    `${paddingX},${paddingTop + chartHeight}`,
-    ...points.map((point) => `${point.x},${point.y}`),
-    `${paddingX + chartWidth},${paddingTop + chartHeight}`,
-  ].join(" ");
+  const line = points.map((p) => `${p.x},${p.y}`).join(" ");
+  const area = `${px},${py + chartHeight} ${line} ${px + chartWidth},${py + chartHeight}`;
 
   return (
     <div className="chart-wrapper">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="cost-chart"
-        role="img"
-        aria-label="AWS daily cost chart"
-      >
-        {[0, 1, 2, 3].map((line) => {
-          const y = paddingTop + (chartHeight / 3) * line;
-
-          return (
-            <line
-              key={line}
-              x1={paddingX}
-              y1={y}
-              x2={paddingX + chartWidth}
-              y2={y}
-              className="chart-grid"
-            />
-          );
+      <svg viewBox={`0 0 ${width} ${height}`} className="cost-chart" role="img" aria-label="AWS daily cost chart">
+        {[0, 1, 2, 3].map((row) => {
+          const y = py + (chartHeight / 3) * row;
+          return <line key={row} x1={px} y1={y} x2={px + chartWidth} y2={y} className="chart-grid" />;
         })}
-
-        <polygon
-          points={areaPoints}
-          className="chart-area"
-        />
-
-        <polyline
-          points={linePoints}
-          fill="none"
-          className="chart-line"
-        />
-
+        <polygon points={area} className="chart-area" />
+        <polyline points={line} className="chart-line" fill="none" />
         {points.map((point) => (
           <g key={point.item.date}>
-            <circle
-              cx={point.x}
-              cy={point.y}
-              r="5"
-              className="chart-dot"
-            />
-
-            <text
-              x={point.x}
-              y={height - 15}
-              textAnchor="middle"
-              className="chart-label"
-            >
-              {formatDate(point.item.date)}
-            </text>
+            <circle cx={point.x} cy={point.y} r="5" className="chart-dot" />
+            <text x={point.x} y={height - 14} textAnchor="middle" className="chart-label">{formatDate(point.item.date)}</text>
           </g>
         ))}
       </svg>
-
-      <div className="chart-summary">
-        <span>
-          Daily AWS spend · {currency}
-        </span>
-
-        <span>
-          Latest:{" "}
-          <strong>
-            {formatCurrency(
-              daily[daily.length - 1].amount,
-              currency
-            )}
-          </strong>
-        </span>
-      </div>
+      <div className="chart-summary"><span>Daily AWS spend · {currency}</span><span>Latest <strong>{formatCurrency(daily[daily.length - 1].amount, currency)}</strong></span></div>
     </div>
   );
 }
 
 function App() {
+  const [days, setDays] = useState(7);
   const [dashboard, setDashboard] = useState(null);
-  const [costs, setCosts] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/dashboard"),
-      fetch("/api/costs"),
-    ])
-      .then(async ([dashboardResponse, costsResponse]) => {
-        if (!dashboardResponse.ok) {
-          throw new Error("Failed to load dashboard data");
-        }
-
-        if (!costsResponse.ok) {
-          throw new Error("Failed to load AWS cost data");
-        }
-
-        const dashboardData = await dashboardResponse.json();
-        const costsData = await costsResponse.json();
-
-        return {
-          dashboardData,
-          costsData,
-        };
-      })
-      .then(({ dashboardData, costsData }) => {
-        setDashboard(dashboardData);
-        setCosts(costsData);
-      })
-      .catch((err) => {
-        setError(err.message);
-      });
-  }, []);
-
-  const topServices = useMemo(() => {
-    if (!costs?.services) {
-      return [];
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/dashboard?days=${days}`);
+      if (!response.ok) throw new Error("Unable to load CloudCostOps data");
+      setDashboard(await response.json());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
+  }, [days]);
 
-    return costs.services
-      .filter((service) => Number(service.amount) !== 0)
-      .slice(0, 6);
-  }, [costs]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const totalServiceCost = useMemo(() => {
-    if (!costs?.services) {
-      return 0;
-    }
+  const daily = dashboard?.daily_costs || [];
+  const services = dashboard?.services || [];
+  const resources = dashboard?.resource_details || [];
+  const recommendations = dashboard?.recommendations || [];
+  const topServices = useMemo(() => services.filter((item) => Number(item.amount) !== 0).slice(0, 6), [services]);
+  const totalServiceCost = useMemo(() => services.reduce((sum, item) => sum + Number(item.amount || 0), 0), [services]);
+  const currency = dashboard?.currency || "USD";
+  const awsAccount = dashboard?.aws_account;
+  const isAws = dashboard?.data_source === "aws";
+  const change = dashboard?.cost_change_percent;
 
-    return costs.services.reduce(
-      (sum, service) => sum + Number(service.amount || 0),
-      0
-    );
-  }, [costs]);
-
-  if (error) {
-    return (
-      <div className="app-shell">
-        <main className="container">
-          <div className="error-page">
-            <div className="error-icon">!</div>
-            <h1>Unable to load CloudCostOps</h1>
-            <p>{error}</p>
-            <button
-              className="retry-button"
-              onClick={() => window.location.reload()}
-            >
-              Retry
-            </button>
-          </div>
-        </main>
-      </div>
-    );
+  if (loading && !dashboard) {
+    return <div className="app-shell"><main className="container"><header className="topbar"><div className="brand"><div className="brand-mark">C</div><div><h1>CloudCostOps</h1><p>AWS Cost Intelligence</p></div></div></header><div className="loading-page"><div className="loading-spinner" /><p>Loading AWS cost intelligence...</p></div></main></div>;
   }
 
-  if (!dashboard || !costs) {
-    return (
-      <div className="app-shell">
-        <main className="container">
-          <header className="topbar">
-            <div className="brand">
-              <div className="brand-mark">C</div>
-              <div>
-                <h1>CloudCostOps</h1>
-                <p>AWS Cost Intelligence</p>
-              </div>
-            </div>
-          </header>
-
-          <div className="loading-page">
-            <div className="loading-spinner" />
-            <p>Loading AWS cost data...</p>
-          </div>
-        </main>
-      </div>
-    );
+  if (error && !dashboard) {
+    return <div className="app-shell"><main className="container"><div className="error-page"><div className="error-icon">!</div><h1>Unable to load CloudCostOps</h1><p>{error}</p><button className="retry-button" onClick={loadData}>Retry</button></div></main></div>;
   }
-
-  const currency = costs.currency || "USD";
 
   return (
     <div className="app-shell">
       <main className="container">
-
-        {/* Header */}
         <header className="topbar">
-          <div className="brand">
-            <div className="brand-mark">C</div>
-
-            <div>
-              <h1>CloudCostOps</h1>
-              <p>AWS Cost Intelligence</p>
-            </div>
-          </div>
-
-          <div className="environment">
-            <span className="status-dot" />
-            <span>Live</span>
-            <span className="separator">•</span>
-            <span>us-east-1</span>
-          </div>
+          <div className="brand"><div className="brand-mark">C</div><div><h1>CloudCostOps</h1><p>AWS Cost Intelligence</p></div></div>
+          <div className="environment"><span className="status-dot" /><span>{isAws ? "AWS Live" : "Demo"}</span><span className="separator">•</span><span>{awsAccount?.region || "Local"}</span>{awsAccount?.account_id && <><span className="separator">•</span><span>Account {awsAccount.account_id}</span></>}</div>
         </header>
 
-        {/* Hero */}
         <section className="hero">
-          <div>
-            <p className="eyebrow">CLOUD COST OVERVIEW</p>
-            <h2>Understand where your AWS money goes.</h2>
-            <p className="hero-description">
-              Monitor your cloud spend, identify expensive services,
-              and uncover opportunities to optimize your infrastructure.
-            </p>
-          </div>
-
-          <div className="data-source">
-            <span className="source-dot" />
-            AWS Cost Explorer
-          </div>
+          <div><p className="eyebrow">AWS COST INTELLIGENCE</p><h2>See where your AWS spend goes — and where you can save.</h2><p className="hero-description">CloudCostOps combines AWS cost data, resource inventory, CloudWatch utilization, and optimization rules into one operational view.</p></div>
+          <div className="hero-controls"><label htmlFor="period">Period</label><select id="period" value={days} onChange={(event) => setDays(Number(event.target.value))}><option value="7">7 days</option><option value="30">30 days</option><option value="60">60 days</option><option value="90">90 days</option></select><button className="refresh-button" onClick={loadData} disabled={loading}>{loading ? "Refreshing…" : "Refresh"}</button></div>
         </section>
 
-        {/* KPI Cards */}
         <section className="kpi-grid">
-
-          <div className="kpi-card primary">
-            <div className="kpi-header">
-              <span>7-Day AWS Spend</span>
-              <span className="kpi-icon">$</span>
-            </div>
-
-            <strong>
-              {formatCurrency(costs.total, currency)}
-            </strong>
-
-            <p>
-              Estimated Cost Explorer spend
-            </p>
-          </div>
-
-          <div className="kpi-card">
-            <div className="kpi-header">
-              <span>Previous Month</span>
-              <span className="kpi-icon">↗</span>
-            </div>
-
-            <strong>
-              {formatCurrency(
-                dashboard.previous_month_cost,
-                currency
-              )}
-            </strong>
-
-            <p>
-              Previous monthly baseline
-            </p>
-          </div>
-
-          <div className="kpi-card savings">
-            <div className="kpi-header">
-              <span>Potential Savings</span>
-              <span className="kpi-icon">✦</span>
-            </div>
-
-            <strong>
-              {formatCurrency(
-                dashboard.potential_savings,
-                currency
-              )}
-            </strong>
-
-            <p>
-              Optimization opportunities
-            </p>
-          </div>
-
-          <div className="kpi-card">
-            <div className="kpi-header">
-              <span>Unused Resources</span>
-              <span className="kpi-icon">◌</span>
-            </div>
-
-            <strong>
-              {dashboard.resources.unused}
-            </strong>
-
-            <p>
-              Of {dashboard.resources.total} resources
-            </p>
-          </div>
-
+          <div className="kpi-card primary"><div className="kpi-header"><span>{days}-Day AWS Spend</span><span className="kpi-icon">$</span></div><strong>{formatCurrency(dashboard?.total_cost, currency)}</strong><p>{isAws ? "Live AWS Cost Explorer" : "Local demo data"}</p></div>
+          <div className="kpi-card"><div className="kpi-header"><span>Previous Period</span><span className="kpi-icon">↗</span></div><strong>{dashboard?.previous_month_cost == null ? "—" : formatCurrency(dashboard.previous_month_cost, currency)}</strong><p>{change == null ? "No comparable baseline" : `${change > 0 ? "+" : ""}${change}% vs previous period`}</p></div>
+          <div className="kpi-card savings"><div className="kpi-header"><span>Potential Savings</span><span className="kpi-icon">✦</span></div><strong>{formatCurrency(dashboard?.potential_savings, currency)}</strong><p>{isAws ? "Only defensible estimates" : "Demo recommendations"}</p></div>
+          <div className="kpi-card"><div className="kpi-header"><span>AWS Resources</span><span className="kpi-icon">◌</span></div><strong>{dashboard?.resources?.total || 0}</strong><p>{dashboard?.resources?.unused || 0} unused · {dashboard?.resources?.underutilized || 0} underutilized</p></div>
         </section>
 
-        {/* Charts */}
         <section className="content-grid">
-
-          <div className="panel chart-panel">
-            <div className="panel-header">
-              <div>
-                <p className="panel-eyebrow">SPEND TREND</p>
-                <h3>Daily AWS Cost</h3>
-              </div>
-
-              <span className="period-badge">
-                Last 7 days
-              </span>
-            </div>
-
-            <CostChart
-              daily={costs.daily}
-              currency={currency}
-            />
-          </div>
-
-          {/* Service Costs */}
-          <div className="panel services-panel">
-            <div className="panel-header">
-              <div>
-                <p className="panel-eyebrow">COST BREAKDOWN</p>
-                <h3>Top Services</h3>
-              </div>
-
-              <span className="period-badge">
-                {currency}
-              </span>
-            </div>
-
-            <div className="service-total">
-              <span>Net service cost</span>
-              <strong>
-                {formatCurrency(totalServiceCost, currency)}
-              </strong>
-            </div>
-
-            <div className="service-list">
-              {topServices.length > 0 ? (
-                topServices.map((service, index) => {
-                  const amount = Number(service.amount) || 0;
-                  const percentage =
-                    Math.abs(totalServiceCost) > 0
-                      ? Math.min(
-                          Math.abs(amount / totalServiceCost) * 100,
-                          100
-                        )
-                      : 0;
-
-                  return (
-                    <div
-                      className="service-row"
-                      key={service.name}
-                    >
-                      <div className="service-info">
-                        <div className="service-rank">
-                          {String(index + 1).padStart(2, "0")}
-                        </div>
-
-                        <div className="service-name">
-                          <span>{service.name}</span>
-
-                          <div className="service-bar">
-                            <div
-                              className="service-bar-fill"
-                              style={{
-                                width: `${percentage}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-
-                        <strong>
-                          {formatCurrency(
-                            amount,
-                            service.currency || currency
-                          )}
-                        </strong>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="empty-state">
-                  No billable services found for this period.
-                </div>
-              )}
-            </div>
-          </div>
-
+          <div className="panel chart-panel"><div className="panel-header"><div><p className="panel-eyebrow">SPEND TREND</p><h3>Daily AWS Cost</h3></div><span className="period-badge">Last {days} days</span></div><CostChart daily={daily} currency={currency} /></div>
+          <div className="panel services-panel"><div className="panel-header"><div><p className="panel-eyebrow">COST BREAKDOWN</p><h3>Top AWS Services</h3></div></div><div className="service-total"><span>Service spend</span><strong>{formatCurrency(totalServiceCost, currency)}</strong></div><div className="service-list">{topServices.length ? topServices.map((service, index) => { const amount = Number(service.amount) || 0; const pct = totalServiceCost ? Math.abs(amount / totalServiceCost) * 100 : 0; return <div className="service-row" key={service.name}><div className="service-info"><div className="service-rank">{String(index + 1).padStart(2, "0")}</div><div className="service-name"><span>{service.name}</span><div className="service-bar"><div className="service-bar-fill" style={{ width: `${Math.min(pct, 100)}%` }} /></div></div><strong>{formatCurrency(amount, service.currency || currency)}</strong></div></div>; }) : <div className="empty-state">No service cost data.</div>}</div></div>
         </section>
 
-        {/* Daily Details */}
-        <section className="panel">
-          <div className="panel-header">
-            <div>
-              <p className="panel-eyebrow">COST EXPLORER</p>
-              <h3>Daily Cost Details</h3>
-            </div>
+        <section className="panel"><div className="panel-header"><div><p className="panel-eyebrow">AWS RESOURCES</p><h3>Resource Inventory</h3></div><span className="period-badge">{resources.length} resources</span></div><div className="table-wrapper"><table><thead><tr><th>Resource</th><th>Type</th><th>Status</th><th>Source</th><th>Details</th></tr></thead><tbody>{resources.length ? resources.map((resource) => <tr key={`${resource.type}-${resource.id}`}><td><strong>{resource.id}</strong></td><td>{resource.type}</td><td><span className={`resource-status ${String(resource.status).toLowerCase()}`}>{resource.status}</span></td><td>{resource.source}</td><td>{resource.details?.avg_cpu_percent != null ? `${resource.details.avg_cpu_percent}% avg CPU` : resource.details?.instance_type ? resource.details.instance_type : resource.details?.size_gb ? `${resource.details.size_gb} GB ${resource.details.volume_type || ""}` : resource.details?.engine ? `${resource.details.engine} ${resource.details.instance_class || ""}` : "—"}</td></tr>) : <tr><td colSpan="5"><div className="empty-state">No AWS resources found.</div></td></tr>}</tbody></table></div></section>
 
-            <span className="period-badge">
-              {costs.days} days
-            </span>
-          </div>
+        <section className="content-grid resource-grid"><div className="panel"><div className="panel-header"><div><p className="panel-eyebrow">RESOURCE HEALTH</p><h3>Inventory Summary</h3></div></div><div className="resource-stats"><div className="resource-stat"><span>Total</span><strong>{dashboard?.resources?.total || 0}</strong></div><div className="resource-stat warning"><span>Unused</span><strong>{dashboard?.resources?.unused || 0}</strong></div><div className="resource-stat"><span>Underutilized</span><strong>{dashboard?.resources?.underutilized || 0}</strong></div></div></div><div className="panel savings-panel"><p className="panel-eyebrow">AWS ACCOUNT</p><div className="savings-number">{awsAccount?.account_id || "Demo"}</div><p>{isAws ? `Live account · ${awsAccount.region}` : "No AWS account connected in local demo mode."}</p></div></section>
 
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Daily Cost</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
+        <section className="panel recommendations-panel"><div className="panel-header"><div><p className="panel-eyebrow">OPTIMIZATION ENGINE</p><h3>Recommendations</h3></div><span className="recommendation-count">{recommendations.length} opportunities</span></div><div className="recommendation-list">{recommendations.length ? recommendations.map((item, index) => <div className="recommendation" key={`${item.resource}-${index}`}><div className="recommendation-number">{String(index + 1).padStart(2, "0")}</div><div className="recommendation-main"><strong>{item.resource}</strong><span className="issue">{item.issue}</span><p>{item.recommendation}</p><StatusBadge priority={item.priority} /></div><div className="recommendation-savings"><span>Estimated savings</span><strong>{item.estimated_savings > 0 ? formatCurrency(item.estimated_savings, currency) : "—"}</strong><small>{item.savings_status === "requires_pricing_or_usage_data" ? "Needs pricing data" : "/ month"}</small></div></div>) : <div className="empty-state">No optimization findings for the current inventory.</div>}</div></section>
 
-              <tbody>
-                {costs.daily.map((day) => (
-                  <tr key={day.date}>
-                    <td>
-                      <strong>
-                        {formatDate(day.date)}
-                      </strong>
-                      <span className="date-full">
-                        {day.date}
-                      </span>
-                    </td>
+        <section className="panel"><div className="panel-header"><div><p className="panel-eyebrow">COST EXPLORER</p><h3>Daily Cost Details</h3></div></div><div className="table-wrapper"><table><thead><tr><th>Date</th><th>Daily Cost</th><th>Data</th></tr></thead><tbody>{daily.map((day) => <tr key={day.date}><td><strong>{formatDate(day.date)}</strong><span className="date-full">{day.date}</span></td><td className="money-cell">{formatCurrency(day.amount, day.currency || currency)}</td><td><span className={`badge ${day.estimated ? "estimated" : "actual"}`}>{day.estimated ? "Estimated" : "Final"}</span></td></tr>)}</tbody></table></div></section>
 
-                    <td className="money-cell">
-                      {formatCurrency(
-                        day.amount,
-                        day.currency || currency
-                      )}
-                    </td>
-
-                    <td>
-                      {day.estimated ? (
-                        <span className="badge estimated">
-                          Estimated
-                        </span>
-                      ) : (
-                        <span className="badge actual">
-                          Final
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Resources */}
-        <section className="content-grid resource-grid">
-
-          <div className="panel">
-            <div className="panel-header">
-              <div>
-                <p className="panel-eyebrow">RESOURCE HEALTH</p>
-                <h3>Resource Overview</h3>
-              </div>
-            </div>
-
-            <div className="resource-stats">
-
-              <div className="resource-stat">
-                <span>Total Resources</span>
-                <strong>
-                  {dashboard.resources.total}
-                </strong>
-              </div>
-
-              <div className="resource-stat warning">
-                <span>Unused</span>
-                <strong>
-                  {dashboard.resources.unused}
-                </strong>
-              </div>
-
-              <div className="resource-stat">
-                <span>Underutilized</span>
-                <strong>
-                  {dashboard.resources.underutilized}
-                </strong>
-              </div>
-
-            </div>
-          </div>
-
-          <div className="panel savings-panel">
-            <p className="panel-eyebrow">OPTIMIZATION POTENTIAL</p>
-
-            <div className="savings-number">
-              {formatCurrency(
-                dashboard.potential_savings,
-                currency
-              )}
-            </div>
-
-            <p>
-              Estimated savings identified from current
-              optimization recommendations.
-            </p>
-
-            <div className="savings-line">
-              <span />
-            </div>
-          </div>
-
-        </section>
-
-        {/* Recommendations */}
-        <section className="panel recommendations-panel">
-          <div className="panel-header">
-            <div>
-              <p className="panel-eyebrow">OPTIMIZATION ENGINE</p>
-              <h3>Recommendations</h3>
-            </div>
-
-            <span className="recommendation-count">
-              {dashboard.recommendations.length} opportunities
-            </span>
-          </div>
-
-          <div className="recommendation-list">
-            {dashboard.recommendations.map((item, index) => (
-              <div
-                className="recommendation"
-                key={`${item.resource}-${index}`}
-              >
-                <div className="recommendation-number">
-                  {String(index + 1).padStart(2, "0")}
-                </div>
-
-                <div className="recommendation-main">
-                  <strong>{item.resource}</strong>
-
-                  <span className="issue">
-                    {item.issue}
-                  </span>
-
-                  <p>
-                    {item.recommendation}
-                  </p>
-                </div>
-
-                <div className="recommendation-savings">
-                  <span>Estimated savings</span>
-                  <strong>
-                    {formatCurrency(
-                      item.estimated_savings,
-                      currency
-                    )}
-                  </strong>
-                  <small>/ month</small>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer>
-          <span>CloudCostOps</span>
-          <span>•</span>
-          <span>AWS Cost Intelligence Platform</span>
-          <span>•</span>
-          <span>Live data from AWS Cost Explorer</span>
-        </footer>
-
+        <footer><span>CloudCostOps</span><span>•</span><span>AWS Cost Intelligence Platform</span><span>•</span><span>{isAws ? `Live AWS account ${awsAccount?.account_id || ""}` : "Local demo mode"}</span></footer>
       </main>
     </div>
   );
