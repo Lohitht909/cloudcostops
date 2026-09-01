@@ -10,6 +10,7 @@ class Settings:
             "postgresql://cloudcostops:cloudcostops@localhost:5432/cloudcostops",
         )
         self.aws_region = os.getenv("AWS_REGION", "us-east-1")
+        self.data_source = os.getenv("CLOUDCOSTOPS_DATA_SOURCE", "demo").lower()
 
 
 settings = Settings()
