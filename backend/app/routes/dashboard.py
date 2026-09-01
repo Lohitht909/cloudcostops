@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.services.dashboard import build_dashboard
+from app.services.resource_inventory import list_resources, summarize_resources
 
 router = APIRouter()
 
@@ -15,10 +16,7 @@ def get_dashboard(
     try:
         return build_dashboard(db, days)
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Unable to build dashboard data: {exc}",
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"Unable to build dashboard data: {exc}") from exc
 
 
 @router.get("/costs")
@@ -37,31 +35,28 @@ def get_costs(
             "data_source": dashboard["data_source"],
         }
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Unable to retrieve cost data: {exc}",
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"Unable to retrieve cost data: {exc}") from exc
 
 
 @router.get("/resources")
 def get_resources(db: Session = Depends(get_db)):
     try:
-        dashboard = build_dashboard(db, 7)
-        return dashboard["resources"]
+        return list_resources(db)
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Unable to retrieve resources: {exc}",
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"Unable to retrieve resources: {exc}") from exc
+
+
+@router.get("/resources/summary")
+def get_resource_summary(db: Session = Depends(get_db)):
+    try:
+        return summarize_resources(list_resources(db))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to summarize resources: {exc}") from exc
 
 
 @router.get("/recommendations")
 def get_recommendations(db: Session = Depends(get_db)):
     try:
-        dashboard = build_dashboard(db, 7)
-        return dashboard["recommendations"]
+        return build_dashboard(db, 7)["recommendations"]
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Unable to retrieve recommendations: {exc}",
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"Unable to retrieve recommendations: {exc}") from exc
