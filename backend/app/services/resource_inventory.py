@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import Resource
+from app.services.cloudwatch import enrich_resource_metrics
 
 
 def _demo_resources(db: Session):
@@ -34,6 +35,7 @@ def _aws_resources():
                         "details": {
                             "instance_type": instance.get("InstanceType"),
                             "availability_zone": instance.get("Placement", {}).get("AvailabilityZone"),
+                            "private_ip": instance.get("PrivateIpAddress"),
                         },
                     }
                 )
@@ -51,6 +53,7 @@ def _aws_resources():
                         "size_gb": volume.get("Size"),
                         "volume_type": volume.get("VolumeType"),
                         "availability_zone": volume.get("AvailabilityZone"),
+                        "encrypted": volume.get("Encrypted", False),
                     },
                 }
             )
@@ -100,7 +103,7 @@ def _aws_resources():
                 }
             )
 
-    return resources
+    return enrich_resource_metrics(resources)
 
 
 def list_resources(db: Session):
