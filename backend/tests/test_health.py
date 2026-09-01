@@ -13,10 +13,11 @@ def test_health():
     response = client.get("/api/health")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "status": "healthy",
-        "service": "cloudcostops-backend",
-    }
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert data["service"] == "cloudcostops-backend"
+    assert "version" in data
+    assert data["data_source"] in {"demo", "aws"}
 
 
 def test_dashboard():
@@ -70,11 +71,8 @@ def test_dashboard_days_parameter():
 
 
 def test_dashboard_rejects_invalid_days():
-    response = client.get("/api/dashboard?days=0")
-    assert response.status_code == 422
-
-    response = client.get("/api/dashboard?days=91")
-    assert response.status_code == 422
+    assert client.get("/api/dashboard?days=0").status_code == 422
+    assert client.get("/api/dashboard?days=91").status_code == 422
 
 
 def test_costs():
@@ -91,14 +89,10 @@ def test_costs():
         "data_source": "demo",
     }
 
-    with patch(
-        "app.routes.dashboard.build_dashboard",
-        return_value=mock_dashboard,
-    ):
+    with patch("app.routes.dashboard.build_dashboard", return_value=mock_dashboard):
         response = client.get("/api/costs")
 
     assert response.status_code == 200
-
     data = response.json()
     assert data["currency"] == "USD"
     assert data["days"] == 7
