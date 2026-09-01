@@ -1,22 +1,16 @@
-import os
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://cloudcostops:cloudcostops@localhost:5432/cloudcostops"
-)
+from app.config import settings
 
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(settings.database_url)
 
 
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
-    bind=engine
+    bind=engine,
 )
 
 
