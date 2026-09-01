@@ -4,10 +4,18 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.services.aws_account import get_account_context
+from app.services.aws_metrics import enrich_utilization
 from app.services.dashboard import build_dashboard
 from app.services.resource_inventory import list_resources, summarize_resources
 
 router = APIRouter()
+
+
+def _current_resources(db: Session, days: int = 7):
+    resources = list_resources(db)
+    if settings.data_source == "aws":
+        resources = enrich_utilization(resources, days)
+    return resources
 
 
 @router.get("/dashboard")
@@ -43,17 +51,23 @@ def get_costs(
 
 
 @router.get("/resources")
-def get_resources(db: Session = Depends(get_db)):
+def get_resources(
+    days: int = Query(default=7, ge=1, le=90),
+    db: Session = Depends(get_db),
+):
     try:
-        return list_resources(db)
+        return _current_resources(db, days)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to retrieve resources: {exc}") from exc
 
 
 @router.get("/resources/summary")
-def get_resource_summary(db: Session = Depends(get_db)):
+def get_resource_summary(
+    days: int = Query(default=7, ge=1, le=90),
+    db: Session = Depends(get_db),
+):
     try:
-        return summarize_resources(list_resources(db))
+        return summarize_resources(_current_resources(db, days))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to summarize resources: {exc}") from exc
 
