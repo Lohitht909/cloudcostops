@@ -50,38 +50,48 @@ function StatCard({ label, value, detail, tone = "default" }) {
   );
 }
 
-function CostChart({ data, currency }) {
+function CostChart({ data, currency, dataSource }) {
   if (!data?.length) return <div className="empty">No cost data for this period.</div>;
-  const max = Math.max(...data.map((x) => Number(x.amount) || 0), 1);
+  const amounts = data.map((item) => Number(item.amount) || 0);
+  const max = Math.max(...amounts, 1);
+  const average = amounts.reduce((sum, value) => sum + value, 0) / amounts.length;
+  const variance = amounts.reduce((sum, value) => sum + (value - average) ** 2, 0) / amounts.length;
+  const threshold = average + Math.max(Math.sqrt(variance) * 1.15, average * 0.12);
   const points = data.map((item, index) => {
-    const x = 20 + (index / Math.max(data.length - 1, 1)) * 460;
-    const y = 185 - ((Number(item.amount) || 0) / max) * 145;
-    return { x, y, item };
+    const x = 34 + (index / Math.max(data.length - 1, 1)) * 432;
+    const y = 178 - ((Number(item.amount) || 0) / max) * 132;
+    return { x, y, item, amount: Number(item.amount) || 0 };
   });
-  const line = points.map((p) => `${p.x},${p.y}`).join(" ");
-  const area = `20,185 ${line} 480,185`;
+  const line = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const area = `34,178 ${line} 466,178`;
+  const clusterPoints = points.map((point) => ({ x: point.x, y: 178 - (point.amount * 0.28 / max) * 132 }));
+  const clusterLine = clusterPoints.map((point) => `${point.x},${point.y}`).join(" ");
+  const anomalies = points.filter((point) => point.amount > threshold);
 
   return (
     <div className="chart-wrap">
-      <svg viewBox="0 0 500 220" className="chart" role="img" aria-label="Daily cloud spend trend">
-        {[40, 88, 136, 185].map((y) => <line key={y} x1="20" x2="480" y1={y} y2={y} className="grid-line" />)}
+      <div className="chart-summary"><span>{data.length} daily data points</span><span className={anomalies.length ? "anomaly-count" : "quiet-count"}>{anomalies.length} detected spikes</span></div>
+      <svg viewBox="0 0 500 215" className="chart" role="img" aria-label="Daily cloud cost trend with illustrative cluster allocation and anomaly markers">
+        {[42, 86, 130, 178].map((y) => <line key={y} x1="30" x2="470" y1={y} y2={y} className="grid-line" />)}
         <polygon points={area} className="chart-area" />
         <polyline points={line} className="chart-line" />
-        {points.map(({ x, y, item }) => (
+        <polyline points={clusterLine} className="chart-cluster-line" />
+        {points.map(({ x, y, item, amount }) => (
           <g key={item.date}>
             <circle cx={x} cy={y} r="3.5" className="chart-point" />
-            <text x={x} y="207" textAnchor="middle" className="chart-label">{shortDate(item.date)}</text>
+            {amount > threshold ? <g><path d={`M ${x} ${Math.max(12,y-17)} l -5 9 h 10 z`} className="anomaly-marker" /><title>{`Potential spending spike: ${money(amount,currency)}`}</title></g> : null}
+            <text x={x} y="198" textAnchor="middle" className="chart-label">{shortDate(item.date)}</text>
           </g>
         ))}
       </svg>
+      <div className="chart-legend"><span><i className="legend-dot blue-dot" />Daily cloud spend</span><span><i className="legend-dot purple-dot" />Illustrative 28% cluster allocation</span><span><i className="legend-dot red-dot" />Potential anomaly</span></div>
       <div className="chart-footer">
-        <span>Daily spend · {currency}</span>
-        <strong>{money(data[data.length - 1].amount, currency)} latest</strong>
+        <span>{dataSource === "aws" ? "AWS Cost Explorer · daily spend" : "Seeded demo data · daily spend"} · {currency}</span>
+        <strong>{money(data[ data.length - 1 ].amount, currency)} latest</strong>
       </div>
     </div>
   );
 }
-
 function ServiceBreakdown({ services, currency }) {
   const top = (services || []).filter((s) => Number(s.amount) !== 0).slice(0, 7);
   const total = top.reduce((sum, s) => sum + Number(s.amount || 0), 0);
@@ -185,7 +195,7 @@ function App() {
             <StatCard label="CLUSTER EFFICIENCY SCORE" value={`${efficiencyScore}`} detail={`${data.resources.unused} unused · ${data.resources.underutilized} underutilized`} tone="purple" />
           </section>
           <section className="two-col">
-            <article className="panel"><div className="panel-head"><div><span className="section-kicker">COST TREND AND ANOMALIES</span><h3>Cloud spend by day</h3></div><span className="period">Last {days} days</span></div><CostChart data={data.daily_costs} currency={currency} /></article>
+            <article className="panel"><div className="panel-head"><div><span className="section-kicker">COST TREND AND ANOMALIES</span><h3>Cloud spend by day</h3></div><span className="period">Last {days} days</span></div><CostChart data={data.daily_costs} currency={currency} dataSource={data.data_source} /></article>
             <article className="panel"><div className="panel-head"><div><span className="section-kicker">COST DRIVERS</span><h3>Top services</h3></div><span className="period">{money(totalServiceCost, currency)}</span></div><ServiceBreakdown services={data.services} currency={currency} /></article>
           </section>
           <section className="finops-widgets">
