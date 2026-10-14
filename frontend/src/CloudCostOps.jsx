@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-const NAV_ITEMS = [
-  ["overview", "Overview"],
-  ["costs", "Costs"],
-  ["resources", "Resources"],
-  ["recommendations", "Recommendations"],
+const NAV_GROUPS = [
+  { title: "", items: [["overview", "Overview"]] },
+  { title: "COST REPORTING", items: [["costs", "Perspectives"], ["categories", "Cost Categories"], ["dashboards", "BI Dashboards"]] },
+  { title: "COST OPTIMIZATION", items: [["autostopping", "AutoStopping Rules"], ["recommendations", "Recommendations"], ["commitments", "Commitments"], ["clusters", "Cluster Orchestrator"]] },
+  { title: "COST GOVERNANCE", items: [["budgets", "Budgets"], ["assets", "Asset Governance"], ["anomalies", "Anomalies"]] },
 ];
 
 function money(value, currency = "USD") {
@@ -25,7 +25,7 @@ function shortDate(value) {
 
 function Icon({ name }) {
   const paths = {
-    overview: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
+    overview: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",\n    categories: "M4 6h16M4 12h10M4 18h7", dashboards: "M3 4h18v16H3zM3 9h18M9 9v11", autostopping: "M4 12h4l3-7 4 14 3-7h2", commitments: "M5 5h14v14H5zM8 9h8M8 13h8M8 17h4", clusters: "M12 3 4 7v10l8 4 8-4V7zM4 7l8 4 8-4M12 11v10", budgets: "M4 5h16v14H4zM8 9h8M8 13h5", assets: "M5 4h14v16H5zM8 8h8M8 12h8M8 16h5", anomalies: "M12 3 2.8 20h18.4L12 3Zm0 6v5m0 3v.1",
     costs: "M5 19V9m7 10V5m7 14v-7",
     resources: "M4 7h16M7 4v6m10-6v6M5 20h14a1 1 0 0 0 1-1v-7H4v7a1 1 0 0 0 1 1Z",
     recommendations: "m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.8L6.6 20l1-6.1-4.4-4.3 6.1-.9L12 3Z",
@@ -184,6 +184,12 @@ function App() {
           <section className="two-col">
             <article className="panel"><div className="panel-head"><div><span className="section-kicker">COST TREND AND ANOMALIES</span><h3>Cloud spend by day</h3></div><span className="period">Last {days} days</span></div><CostChart data={data.daily_costs} currency={currency} /></article>
             <article className="panel"><div className="panel-head"><div><span className="section-kicker">COST DRIVERS</span><h3>Top services</h3></div><span className="period">{money(totalServiceCost, currency)}</span></div><ServiceBreakdown services={data.services} currency={currency} /></article>
+          </section>
+          <section className="finops-widgets">
+            <article className="panel widget-card"><div className="panel-head"><div><span className="section-kicker">COST OPTIMIZATION</span><h3>Recommendations breakdown</h3></div><span className="tag">Optimization</span></div><div className="donut-row"><div className="donut donut-green"><div><strong>{money(data.potential_savings, currency)}</strong><span>Potential savings</span></div></div><div className="legend-list"><span><i className="legend-dot green-dot" />Compute optimization</span><span><i className="legend-dot blue-dot" />Idle resources</span><span><i className="legend-dot purple-dot" />Storage & other</span></div></div><div className="widget-foot">Savings identified <strong>{money(data.potential_savings, currency)}</strong></div></article>
+            <article className="panel widget-card"><div className="panel-head"><div><span className="section-kicker">CLUSTER REPORTING</span><h3>Cluster cost breakdown</h3></div><span className="tag">Reporting</span></div><div className="donut-row"><div className="donut donut-purple"><div><strong>{efficiencyScore}/100</strong><span>Efficiency score</span></div></div><div className="legend-list"><span><i className="legend-dot purple-dot" />Efficient <b>{Math.max(0, data.resources.total-data.resources.unused-data.resources.underutilized)}</b></span><span><i className="legend-dot amber-dot" />Underutilized <b>{data.resources.underutilized}</b></span><span><i className="legend-dot red-dot" />Unused <b>{data.resources.unused}</b></span></div></div></article>
+            <article className="panel widget-card"><div className="panel-head"><div><span className="section-kicker">AUTOMATION</span><h3>AutoStopping</h3></div><span className="tag">Optimization</span></div><div className="big-widget-value">{money(realizedSavings, currency)}</div><p className="widget-caption">Illustrative savings estimate</p><div className="widget-foot">Active rules <strong>0 configured</strong></div></article>
+            <article className="panel widget-card"><div className="panel-head"><div><span className="section-kicker">GOVERNANCE</span><h3>Asset governance</h3></div><span className="tag tag-pink">Governance</span></div><div className="big-widget-value">{data.resources.total}</div><p className="widget-caption">Resources tracked locally</p><div className="widget-foot">Recommendations <strong>{data.recommendations?.length || 0}</strong></div></article>
           </section>
           <section className="two-col lower">
             <article className="panel"><div className="panel-head"><div><span className="section-kicker">RESOURCE HEALTH</span><h3>What needs attention?</h3></div><button className="text-button" onClick={() => setPage("resources")}>View inventory →</button></div><div className="health-grid"><div><strong>{data.resources.total}</strong><span>Total resources</span></div><div className="warning-stat"><strong>{data.resources.underutilized}</strong><span>Underutilized</span></div><div className="danger-stat"><strong>{data.resources.unused}</strong><span>Unused</span></div></div></article>
