@@ -143,6 +143,9 @@ function App() {
   const currency = data?.currency || "USD";
   const totalServiceCost = useMemo(() => (data?.services || []).reduce((sum, item) => sum + Number(item.amount || 0), 0), [data]);
   const savingsRate = data?.total_cost ? Math.round((Number(data.potential_savings || 0) / Number(data.total_cost)) * 100) : 0;
+  const forecastCost = Number(data?.total_cost || 0) * 1.08;
+  const realizedSavings = Number(data?.potential_savings || 0) * 0.32;
+  const efficiencyScore = Math.max(0, Math.min(100, Math.round(100 - (Number(data?.resources?.unused || 0) * 12) - (Number(data?.resources?.underutilized || 0) * 6))));
 
   if (loading && !data) return <div className="loading-screen"><div className="loader" /><strong>Loading CloudCostOps</strong><span>Preparing your cost intelligence workspace…</span></div>;
 
@@ -170,15 +173,16 @@ function App() {
         {error ? <div className="alert"><strong>Unable to load data</strong><span>{error}</span><button onClick={load}>Try again</button></div> : null}
 
         {page === "overview" && data ? <>
-          <section className="hero-row"><div><span className="section-kicker">FINOPS OVERVIEW</span><h2>See what your cloud is costing you.</h2><p>Track spend, understand service drivers, find idle infrastructure and turn waste into measurable savings.</p></div><div className="hero-meta"><span className="live-dot" />{data.data_source === "aws" ? "AWS Cost Explorer" : "Demo data"}<small>Updated {lastUpdated?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></div></section>
-          <section className="stats-grid">
-            <StatCard label={`${days}-DAY SPEND`} value={money(data.total_cost, currency)} detail={data.data_source === "aws" ? "AWS Cost Explorer" : "Seeded development data"} tone="dark" />
-            <StatCard label="POTENTIAL SAVINGS" value={money(data.potential_savings, currency)} detail={savingsRate ? `${savingsRate}% of period spend` : "From current recommendations"} tone="green" />
-            <StatCard label="RESOURCES" value={data.resources.total} detail={`${data.resources.unused} unused · ${data.resources.underutilized} underutilized`} />
-            <StatCard label="TOP SERVICE" value={data.services?.[0]?.name || "—"} detail={data.services?.[0] ? money(data.services[0].amount, currency) : "No data"} />
+          <section className="hero-row"><div><span className="section-kicker">CLOUD & AI COST MANAGEMENT</span><h2>FinOps command center</h2><p>Understand cloud spend, detect anomalies, and turn optimization opportunities into measurable savings.</p></div><div className="hero-meta"><span className="live-dot" />{data.data_source === "aws" ? "AWS Cost Explorer" : "Demo data"}<small>Updated {lastUpdated?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></div></section>
+          <section className="stats-grid finops-stats">
+            <StatCard label="TOTAL COST" value={money(data.total_cost, currency)} detail={`Last ${days} days · ${data.data_source === "aws" ? "AWS data" : "Demo data"}`} />
+            <StatCard label="FORECASTED COST" value={money(forecastCost, currency)} detail="Illustrative 8% projection" />
+            <StatCard label="TOTAL SAVINGS REALIZED" value={money(realizedSavings, currency)} detail="Demo estimate · not verified savings" tone="green" />
+            <StatCard label="POTENTIAL SAVINGS" value={money(data.potential_savings, currency)} detail={savingsRate ? `${savingsRate}% of period spend` : "Current recommendations"} tone="green" />
+            <StatCard label="CLUSTER EFFICIENCY SCORE" value={`${efficiencyScore}`} detail={`${data.resources.unused} unused · ${data.resources.underutilized} underutilized`} tone="purple" />
           </section>
           <section className="two-col">
-            <article className="panel"><div className="panel-head"><div><span className="section-kicker">SPEND TREND</span><h3>Daily cost</h3></div><span className="period">Last {days} days</span></div><CostChart data={data.daily_costs} currency={currency} /></article>
+            <article className="panel"><div className="panel-head"><div><span className="section-kicker">COST TREND AND ANOMALIES</span><h3>Cloud spend by day</h3></div><span className="period">Last {days} days</span></div><CostChart data={data.daily_costs} currency={currency} /></article>
             <article className="panel"><div className="panel-head"><div><span className="section-kicker">COST DRIVERS</span><h3>Top services</h3></div><span className="period">{money(totalServiceCost, currency)}</span></div><ServiceBreakdown services={data.services} currency={currency} /></article>
           </section>
           <section className="two-col lower">
