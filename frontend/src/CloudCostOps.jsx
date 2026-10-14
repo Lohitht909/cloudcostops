@@ -155,9 +155,10 @@ function App() {
       <aside className="sidebar">
         <div className="logo"><div className="logo-mark">C</div><div><strong>CloudCostOps</strong><span>Cloud cost intelligence</span></div></div>
         <nav className="nav">
-          {NAV_ITEMS.map(([id, label]) => (
-            <button key={id} className={page === id ? "active" : ""} onClick={() => setPage(id)}><Icon name={id} /><span>{label}</span>{id === "recommendations" && data?.recommendations?.length ? <b>{data.recommendations.length}</b> : null}</button>
-          ))}
+          {NAV_GROUPS.map((group) => <div className="nav-group" key={group.title || "primary"}>
+            {group.title ? <span className="nav-group-title">{group.title}</span> : null}
+            {group.items.map(([id, label]) => <button key={id} className={page === id ? "active" : ""} onClick={() => setPage(["categories","dashboards","autostopping","commitments","clusters","budgets","assets","anomalies"].includes(id) ? "overview" : id)}><Icon name={id} /><span>{label}</span>{id === "recommendations" && data?.recommendations?.length ? <b>{data.recommendations.length}</b> : null}</button>)}
+          </div>)}
         </nav>
         <div className="sidebar-bottom">
           <div className="mode-box"><span className="mode-dot" /><div><strong>{data?.data_source === "aws" ? "AWS connected" : "Demo environment"}</strong><span>{data?.data_source === "aws" ? "Live AWS APIs" : "Local PostgreSQL data"}</span></div></div>
