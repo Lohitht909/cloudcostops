@@ -17,14 +17,19 @@ def _demo_daily_costs(db: Session, days: int):
     total = round(sum(item.cost for item in costs), 2)
     if days <= 0:
         return []
-    daily_amount = round(total / days, 2)
+    # Deterministic demo variation makes charts useful without pretending
+    # these values came from live AWS billing. Normalize the pattern so the
+    # daily values still add up to the seeded service total for the period.
+    pattern = [0.78, 0.91, 1.04, 0.86, 1.22, 1.08, 1.11]
+    weights = [pattern[index % len(pattern)] for index in range(days)]
+    weight_total = sum(weights) or 1
     result = []
     running = 0.0
-    for offset in range(days):
-        amount = daily_amount
+    for offset, weight in enumerate(weights):
+        amount = round(total * weight / weight_total, 2)
         if offset == days - 1:
             amount = round(total - running, 2)
-        running += amount
+        running = round(running + amount, 2)
         result.append({
             "date": (date.today() - timedelta(days=days - 1 - offset)).isoformat(),
             "amount": amount,
