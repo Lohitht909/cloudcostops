@@ -127,7 +127,8 @@ function App() {
   const [resources, setResources] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState(null);\n  const [budgetLimit, setBudgetLimit] = useState(1500);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [budgetLimit, setBudgetLimit] = useState(1500);
 
   const load = useCallback(async () => {
     setLoading(true);
