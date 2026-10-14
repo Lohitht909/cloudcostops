@@ -164,7 +164,7 @@ function App() {
         </div>
       </aside>
 
-      <main className="main">
+      <main className="main">\n        <div className="insight-prompts" aria-label="AI cost insight prompts"><span className="ai-orb">✦</span>{["Ask AI for Cost Insights", "What are my top spenders this month?", "How have my costs changed?", "How can I reduce cloud spend?"].map((prompt) => <button key={prompt} onClick={() => setPage("recommendations")}>{prompt}</button>)}</div>
         <header className="header">
           <div><span className="breadcrumb">CloudCostOps / {page === "overview" ? "Overview" : page[0].toUpperCase() + page.slice(1)}</span><h1>{page === "overview" ? "Cloud cost command center" : page === "costs" ? "Cost analysis" : page === "resources" ? "Resource inventory" : page === "recommendations" ? "Optimization recommendations" : "Environment"}</h1></div>
           <div className="header-actions"><label className="select-wrap"><span>Period</span><select value={days} onChange={(e) => setDays(Number(e.target.value))}><option value="7">7 days</option><option value="30">30 days</option><option value="60">60 days</option><option value="90">90 days</option></select></label><button className="refresh" onClick={load} disabled={loading}><Icon name="refresh" />{loading ? "Refreshing" : "Refresh"}</button></div>
