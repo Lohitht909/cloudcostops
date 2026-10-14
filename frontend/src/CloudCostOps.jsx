@@ -25,7 +25,8 @@ function shortDate(value) {
 
 function Icon({ name }) {
   const paths = {
-    overview: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",\n    categories: "M4 6h16M4 12h10M4 18h7", dashboards: "M3 4h18v16H3zM3 9h18M9 9v11", autostopping: "M4 12h4l3-7 4 14 3-7h2", commitments: "M5 5h14v14H5zM8 9h8M8 13h8M8 17h4", clusters: "M12 3 4 7v10l8 4 8-4V7zM4 7l8 4 8-4M12 11v10", budgets: "M4 5h16v14H4zM8 9h8M8 13h5", assets: "M5 4h14v16H5zM8 8h8M8 12h8M8 16h5", anomalies: "M12 3 2.8 20h18.4L12 3Zm0 6v5m0 3v.1",
+    overview: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
+    categories: "M4 6h16M4 12h10M4 18h7", dashboards: "M3 4h18v16H3zM3 9h18M9 9v11", autostopping: "M4 12h4l3-7 4 14 3-7h2", commitments: "M5 5h14v14H5zM8 9h8M8 13h8M8 17h4", clusters: "M12 3 4 7v10l8 4 8-4V7zM4 7l8 4 8-4M12 11v10", budgets: "M4 5h16v14H4zM8 9h8M8 13h5", assets: "M5 4h14v16H5zM8 8h8M8 12h8M8 16h5", anomalies: "M12 3 2.8 20h18.4L12 3Zm0 6v5m0 3v.1",
     costs: "M5 19V9m7 10V5m7 14v-7",
     resources: "M4 7h16M7 4v6m10-6v6M5 20h14a1 1 0 0 0 1-1v-7H4v7a1 1 0 0 0 1 1Z",
     recommendations: "m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.8L6.6 20l1-6.1-4.4-4.3 6.1-.9L12 3Z",
